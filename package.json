@@ -9,7 +9,7 @@
 		{
 			"displayName":"Usage",
 			"description":"Muestra de como un dispositivo puede hacer de controlador y gestionar el nivel que cargar en los clientes, cambiar texturas de sus entornos, y ver lo que están viendo replicando la posición de su cámara.",
-			"path":"Samples/Usage"
+			"path":"Samples~/Usage"
 		}
 	]
 }
