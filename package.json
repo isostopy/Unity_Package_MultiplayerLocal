@@ -2,13 +2,13 @@
 	"name": "com.isostopy.multiplayer-local",
 	"displayName": "Multiplayer Local",
 	"version":"1.0.0",
-	"description": "Sistema que permite la comunicación entre dispositivos android de una red local, incluso sin internet, mediante UDP. La red local puede ser la generada por un Movil usado como punto de acceso.",
+	"description": "Sistema que permite la comunicación entre dispositivos en una red local (hotspot/personal acces point) , incluso sin internet, mediante UDP.",
 	"author": "isostopy",
 	"samples":
 	[
 		{
 			"displayName":"Usage",
-			"description":"Muestra de como un dispositivo puede hacer de controlador y gestionar el nivel que cargar en los clientes, cambiar texturas de sus entornos, y ver lo que están viendo replicando la posición de su cámara.",
+			"description":"Muestra de configuración.",
 			"path":"Samples~/Usage"
 		}
 	]

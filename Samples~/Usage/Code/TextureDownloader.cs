@@ -1,19 +1,17 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.Networking;
-using UnityEngine.SceneManagement;
 
 public class TextureDownloader : MonoBehaviour
 {
-    public string serverUrl;
-
     private string localPath;
     private List<TextureData> serverTextures;
-    private List<string> localTextures;
+
+    public TextureManager textureManager;
 
     [HideInInspector] public UnityEvent texturesUpdated;
 
@@ -25,25 +23,24 @@ public class TextureDownloader : MonoBehaviour
 
         if (Application.internetReachability == NetworkReachability.NotReachable)
         {
-            OnScreenLog.Instance.Log("No internet connection available.");
+            OnScreenLog.TryLog("No internet connection available.");
             return;
         }
 
-        StartCoroutine(CheckForUpdates());
+        ConnectionManager.Instance.SubscribeToMessages(ProcessMessage);
 
-        ConnectionManager.Instance.messageReceived.AddListener(ProcessMessage);
+        ConnectionManager.Instance.SendMessageToAllClients(NetworkConstants.MsgUpdateTextures);
     }
+
 
     private void ProcessMessage(string message, UdpReceiveResult result)
     {
         string[] parts = message.Split('|');
 
-        if (parts.Length >= 1 && parts[0] == "UpdateTextures")
+        if (parts.Length >= 1 && parts[0] == NetworkConstants.MsgUpdateTextures)
         {
-            DownloadTextures();
-            return;
+            UpdateTextures();
         }
-
     }
 
     public void UpdateTextures()
@@ -53,30 +50,75 @@ public class TextureDownloader : MonoBehaviour
 
     IEnumerator CheckForUpdates()
     {
-        using (UnityWebRequest request = UnityWebRequest.Get(serverUrl))
+        if (textureManager == null || textureManager.elementGroupsManager == null)
         {
+            OnScreenLog.TryLog("Error: TextureManager o ElementGroupsManager no están asignados.");
+            yield break;
+        }
+
+        serverTextures = new List<TextureData>();
+
+        foreach (var group in textureManager.elementGroupsManager.selectableGroups)
+        {
+            using UnityWebRequest request = UnityWebRequest.Get(group.url);
             yield return request.SendWebRequest();
 
             if (request.result != UnityWebRequest.Result.Success)
             {
-                OnScreenLog.Instance.Log("Error fetching texture list: " + request.error);
-                yield break;
+                OnScreenLog.TryLog($"Error fetching textures from {group.groupID}: {request.error}");
+                StartCoroutine(RetryGroupFetch(group, 5f));
+                continue;
             }
 
             TextureList textureList = JsonUtility.FromJson<TextureList>(request.downloadHandler.text);
-            serverTextures = textureList.images;
-            localTextures = new List<string>(Directory.GetFiles(localPath));
-
-            if (NeedsUpdate())
+            if (textureList?.images != null)
             {
-                OnScreenLog.Instance.Log("New textures found. Starting download...");
+                foreach (var texture in textureList.images)
+                {
+                    texture.groupID = group.groupID;
+                    serverTextures.Add(texture);
+                }
+            }
+        }
+
+        if (NeedsUpdate())
+        {
+            OnScreenLog.TryLog("New textures found. Starting download...");
+            StartCoroutine(DownloadAllTextures());
+        }
+        else
+        {
+            OnScreenLog.TryLog("All textures are up to date.");
+            texturesUpdated.Invoke();
+        }
+    }
+
+    private IEnumerator RetryGroupFetch(SelectableGroup group, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        OnScreenLog.TryLog($"Retrying texture list fetch for group {group.groupID}...");
+
+        using UnityWebRequest request = UnityWebRequest.Get(group.url);
+        yield return request.SendWebRequest();
+
+        if (request.result == UnityWebRequest.Result.Success)
+        {
+            TextureList textureList = JsonUtility.FromJson<TextureList>(request.downloadHandler.text);
+            if (textureList?.images != null)
+            {
+                foreach (var texture in textureList.images)
+                {
+                    texture.groupID = group.groupID;
+                    serverTextures.Add(texture);
+                }
+
+                OnScreenLog.TryLog($"Recovered texture list for group {group.groupID}. Retrying full update...");
                 StartCoroutine(DownloadAllTextures());
             }
-            else
-            {
-                OnScreenLog.Instance.Log("All textures are up to date.");
-                texturesUpdated.Invoke();
-            }
+        }
+        else
+        {
+            StartCoroutine(RetryGroupFetch(group, delay));
         }
     }
 
@@ -84,8 +126,9 @@ public class TextureDownloader : MonoBehaviour
     {
         foreach (var texture in serverTextures)
         {
-            string localFile = Path.Combine(localPath, texture.name);
-            if (!localTextures.Contains(localFile))
+            string groupPath = Path.Combine(localPath, texture.groupID);
+            string localFile = Path.Combine(groupPath, texture.name);
+            if (!File.Exists(localFile))
             {
                 return true;
             }
@@ -93,17 +136,15 @@ public class TextureDownloader : MonoBehaviour
         return false;
     }
 
-    public void DownloadTextures()
-    {
-        StartCoroutine(DownloadAllTextures());
-        ConnectionManager.Instance.SendMessageToEndpoint("UpdateTextures", ConnectionManager.Instance.broadcastEndpoint);
-    }
-
     IEnumerator DownloadAllTextures()
     {
         foreach (var texture in serverTextures)
         {
-            string filePath = Path.Combine(localPath, texture.name);
+            string groupPath = Path.Combine(localPath, texture.groupID);
+            if (!Directory.Exists(groupPath))
+                Directory.CreateDirectory(groupPath);
+
+            string filePath = Path.Combine(groupPath, texture.name);
 
             using (UnityWebRequest request = UnityWebRequestTexture.GetTexture(texture.url))
             {
@@ -111,47 +152,78 @@ public class TextureDownloader : MonoBehaviour
 
                 if (request.result != UnityWebRequest.Result.Success)
                 {
-                    OnScreenLog.Instance.Log("Failed to download " + texture.name + ": " + request.error);
+                    OnScreenLog.TryLog($"Failed to download {texture.name}: {request.error}");
+                    StartCoroutine(RetryDownloadTexture(texture, 5f));
                     continue;
                 }
 
                 Texture2D tex = ((DownloadHandlerTexture)request.downloadHandler).texture;
                 File.WriteAllBytes(filePath, tex.EncodeToPNG());
-                OnScreenLog.Instance.Log("Downloaded: " + texture.name);
+                OnScreenLog.TryLog($"Downloaded: {texture.name} to group: {texture.groupID}");
             }
         }
 
         texturesUpdated.Invoke();
+        OnScreenLog.TryLog("Textures updated!");
+    }
 
-        OnScreenLog.Instance.Log("Textures updated!");
+    private IEnumerator RetryDownloadTexture(TextureData texture, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        OnScreenLog.TryLog($"Retrying download for texture {texture.name}...");
+
+        string groupPath = Path.Combine(localPath, texture.groupID);
+        string filePath = Path.Combine(groupPath, texture.name);
+
+        using (UnityWebRequest request = UnityWebRequestTexture.GetTexture(texture.url))
+        {
+            yield return request.SendWebRequest();
+
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                if (!Directory.Exists(groupPath))
+                    Directory.CreateDirectory(groupPath);
+
+                Texture2D tex = ((DownloadHandlerTexture)request.downloadHandler).texture;
+                File.WriteAllBytes(filePath, tex.EncodeToPNG());
+                OnScreenLog.TryLog($"Recovered: {texture.name}");
+                texturesUpdated.Invoke();
+            }
+            else
+            {
+                StartCoroutine(RetryDownloadTexture(texture, delay));
+            }
+        }
     }
 
     public void DeleteTextures()
     {
         if (Directory.Exists(localPath))
         {
-            string[] files = Directory.GetFiles(localPath);
-            foreach (string file in files)
-            {
-                File.Delete(file);
-            }
+            Directory.Delete(localPath, true);
+            Directory.CreateDirectory(localPath);
 
             texturesUpdated.Invoke();
-
-            OnScreenLog.Instance.Log("All textures deleted.");
+            OnScreenLog.TryLog("All textures deleted.");
         }
         else
         {
-            OnScreenLog.Instance.Log("No textures found to delete.");
+            OnScreenLog.TryLog("No textures found to delete.");
         }
-
     }
+
+    private void OnDestroy()
+    {
+        ConnectionManager.Instance?.UnsubscribeFromMessages(ProcessMessage);
+    }
+
 
     [System.Serializable]
     public class TextureData
     {
         public string name;
         public string url;
+        [System.NonSerialized] public string groupID;
     }
 
     [System.Serializable]

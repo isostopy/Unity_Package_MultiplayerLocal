@@ -5,44 +5,31 @@ using UnityEngine;
 
 public class TextureSelector : MonoBehaviour
 {
-
-    [SerializeField] TMP_Dropdown texturesDropdown;
-    [SerializeField] TMP_Dropdown groupsDropdown;
-
-    string selectedTexture;
-    string selectedGroup;
-
+    [HideInInspector] public string selectedTexture;
     [HideInInspector] public TextureManager textureManager;
+
+    public TMP_Dropdown texturesDropdown;
 
     public void UpdateDropdownsOptions()
     {
         texturesDropdown.ClearOptions();
-        groupsDropdown.ClearOptions();
 
+        if (textureManager == null || textureManager.elementGroupsManager == null)
+            return;
 
-        List<string> textureOptions = new List<string>();
-        foreach (var file in textureManager.textureFiles)
+        var groupSelector = textureManager.elementGroupsManager.elementGroupSelector;
+        if (groupSelector == null || groupSelector.groupsDropdown.options.Count == 0)
+            return;
+
+        string selectedGroup = textureManager.elementGroupsManager.selectableGroups[groupSelector.groupsDropdown.value].groupID;
+        List<string> groupTextures = textureManager.GetTexturesForGroup(selectedGroup);
+
+        List<string> textureOptions = new();
+        foreach (var file in groupTextures)
         {
             textureOptions.Add(Path.GetFileName(file));
         }
+
         texturesDropdown.AddOptions(textureOptions);
-
-
-        List<string> groupOptions = new List<string>();
-        foreach (var group in textureManager.selectableGroups)
-        {
-            groupOptions.Add(group.groupID);
-        }
-        groupsDropdown.AddOptions(groupOptions);
     }
-
-    public void ApplySelection()
-    {
-        selectedTexture = Path.GetFileName(textureManager.textureFiles[texturesDropdown.value]);
-        selectedGroup = textureManager.selectableGroups[groupsDropdown.value].groupID;
-        OnScreenLog.Instance.Log("Texture " + selectedTexture + " selected for group: " + selectedGroup);
-
-        ConnectionManager.Instance.SendMessageToEndpoint("ChangeMaterials|" + selectedGroup + "|" + selectedTexture, ConnectionManager.Instance.broadcastEndpoint);
-    }
-
 }

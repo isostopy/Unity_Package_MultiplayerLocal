@@ -1,45 +1,26 @@
+using System.Collections;
 using System.Collections.Generic;
-using System.Net.Sockets;
+using System.Linq;
 using System.Net;
+using System.Net.Sockets;
 using UnityEngine;
-using System.Net.NetworkInformation;
-using System.Text;
 using UnityEngine.Events;
-
-[System.Serializable]
-public class MessageEvent : UnityEvent<string, UdpReceiveResult> { }
-
-public enum DeviceRol
-{
-    Server,
-    Client
-}
-
+using UnityEngine.UI;
 
 public class ConnectionManager : MonoBehaviour
 {
     public static ConnectionManager Instance;
 
-    public DeviceRol rol;
-    public List<string> selectableScenes = new List<string>();
+    [SerializeField] private DeviceRol rol;
 
-    private string localIP;
-    private string broadcastIP;
+    private NetworkHandler networkHandler;
+    private ClientManager clientManager;
 
-    [HideInInspector] public UdpClient udpClient;
+    private IPEndPoint serverEndPoint;
+    private IPEndPoint selectedClient;
+    private bool isSelected;
 
-    [HideInInspector] public List<IPEndPoint> clients = new List<IPEndPoint>();
-    [HideInInspector] public IPEndPoint broadcastEndpoint;
-    [HideInInspector] public IPEndPoint serverEndPoint;
-    [HideInInspector] public IPEndPoint selectedClient;
-
-    private AndroidJavaObject multicastLock;
-
-    [HideInInspector] public MessageEvent messageReceived;
-    [HideInInspector] public UnityEvent clientsFound;
-
-    [HideInInspector] public bool selected;
-
+    public bool IsSelected() => isSelected;
 
     private void Awake()
     {
@@ -47,182 +28,193 @@ public class ConnectionManager : MonoBehaviour
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
+            Initialize();
         }
         else
         {
             Destroy(gameObject);
         }
-
-        Initialize();
-
     }
 
     private void Initialize()
     {
-        try
-        {
-            udpClient = new UdpClient(new IPEndPoint(IPAddress.Any, 50000));
-            Debug.Log("Port 50000 is accessible.");
-        }
-        catch
-        {
-            Debug.Log("Port 50000 is not accessible.");
-        }
+        networkHandler = new NetworkHandler();
+        clientManager = new ClientManager();
 
-        if(rol == DeviceRol.Server)
+        networkHandler.OnMessageReceived += HandleMessage;
+        clientManager.OnClientsUpdated.AddListener(() =>
+            Debug.Log($"Clients count: {clientManager.GetClients().Count}")
+        );
+
+        networkHandler.StartListening();
+
+        if (rol == DeviceRol.Server)
         {
-            udpClient.EnableBroadcast = true;
-            localIP = GetLocalIPAddress();
-            broadcastIP = localIP.Substring(0, localIP.LastIndexOf('.')) + ".255";
-            broadcastEndpoint = new IPEndPoint(IPAddress.Parse(broadcastIP), 50000);
-
-            EnableMulticastLock();
-        }
-
-        ListenForMessages();
-    }
-
-    private string GetLocalIPAddress()
-    {
-        foreach (NetworkInterface ni in NetworkInterface.GetAllNetworkInterfaces())
-        {
-            if (ni.OperationalStatus == OperationalStatus.Up)
+            var localIP = GetLocalIPAddress();
+            if (IPAddress.TryParse(localIP, out var ip))
             {
-                foreach (UnicastIPAddressInformation ip in ni.GetIPProperties().UnicastAddresses)
-                {
-                    if (ip.Address.AddressFamily == AddressFamily.InterNetwork && !ip.Address.ToString().StartsWith("127."))
-                    {
-                        return ip.Address.ToString();
-                    }
-                }
+                var localEndpoint = new IPEndPoint(ip, NetworkConstants.ServerPort);
+                clientManager.AddClient(localEndpoint);
+                Debug.Log($"Servidor registrado como cliente en {localEndpoint}");
             }
-        }
-        return "192.168.43.255";
-    }
-
-    private void EnableMulticastLock()
-    {
-        using (AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
-        {
-            using (AndroidJavaObject activity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity"))
+            else
             {
-                using (AndroidJavaObject wifiManager = activity.Call<AndroidJavaObject>("getSystemService", "wifi"))
-                {
-                    multicastLock = wifiManager.Call<AndroidJavaObject>("createMulticastLock", "mylock");
-                    multicastLock.Call("setReferenceCounted", true);
-                    multicastLock.Call("acquire");
-                    Debug.Log("Multicast lock acquired!");
-                }
+                Debug.LogWarning("No se pudo registrar el servidor como cliente: IP no válida");
             }
+
+#if UNITY_ANDROID
+            StartCoroutine(AutoBroadcastPing());
+#endif
         }
     }
 
-    async void ListenForMessages()
+    private IEnumerator AutoBroadcastPing()
     {
+        var broadcastEndpoint = new IPEndPoint(IPAddress.Broadcast, NetworkConstants.ServerPort);
+
         while (true)
         {
-            try
+            networkHandler.SendMessage(NetworkConstants.MsgPing, broadcastEndpoint);
+            Debug.Log("[Server][Android] Sent Ping broadcast");
+            yield return new WaitForSeconds(2f);
+        }
+    }
+
+    private void HandleMessage(string message, UdpReceiveResult result)
+    {
+        if (rol == DeviceRol.Server && message == NetworkConstants.MsgClientHello)
+        {
+            var existingClients = clientManager.GetClients();
+            if (!existingClients.Contains(result.RemoteEndPoint))
             {
-                UdpReceiveResult result = await udpClient.ReceiveAsync();
-                string receivedMessage = Encoding.UTF8.GetString(result.Buffer);
-                Debug.Log($"Server Received: {receivedMessage} from {result.RemoteEndPoint}");
-
-                messageReceived.Invoke(receivedMessage, result);
-                ProcessMessage(receivedMessage, result);
+                clientManager.AddClient(result.RemoteEndPoint);
+                Debug.Log($"Registered client: {result.RemoteEndPoint}");
             }
-            catch (SocketException ex)
+        }
+
+#if UNITY_ANDROID
+        if (message == NetworkConstants.MsgPing && rol == DeviceRol.Client)
+        {
+            SendMessageToServer(NetworkConstants.MsgClientHello);
+            Debug.Log("[Client][Android] Received Ping, sent ClientHello");
+        }
+#endif
+
+        if (message == NetworkConstants.MsgSelect && rol == DeviceRol.Client)
+        {
+            isSelected = true;
+            Debug.Log("This client is now SELECTED.");
+        }
+
+        if (message == NetworkConstants.MsgDeselect && rol == DeviceRol.Client)
+        {
+            isSelected = false;
+            Debug.Log("This client is now DESELECTED.");
+        }
+    }
+
+    public void SubscribeToMessages(NetworkHandler.MessageReceivedHandler handler)
+    {
+        networkHandler.OnMessageReceived -= handler;
+        networkHandler.OnMessageReceived += handler;
+    }
+
+    public void UnsubscribeFromMessages(NetworkHandler.MessageReceivedHandler handler)
+    {
+        networkHandler.OnMessageReceived -= handler;
+    }
+
+    public void SubscribeToClientsUpdated(UnityAction callback)
+    {
+        clientManager.OnClientsUpdated.RemoveListener(callback);
+        clientManager.OnClientsUpdated.AddListener(callback);
+    }
+
+    public void SendMessageToAllClients(string message)
+    {
+        foreach (var client in clientManager.GetClients())
+        {
+            networkHandler.SendMessage(message, client);
+        }
+    }
+
+    public void SendMessageToServer(string message)
+    {
+        if (serverEndPoint != null)
+        {
+            networkHandler.SendMessage(message, serverEndPoint);
+        }
+        else
+        {
+            Debug.LogWarning("No server endpoint defined.");
+        }
+    }
+
+    public void SetServerEndpoint(string ipString)
+    {
+        if (IPAddress.TryParse(ipString, out var ip))
+        {
+            serverEndPoint = new IPEndPoint(ip, NetworkConstants.ServerPort);
+            Debug.Log($"Server endpoint set to {serverEndPoint}");
+        }
+        else
+        {
+            Debug.LogError($"Invalid IP entered: {ipString}");
+        }
+    }
+
+    public IPEndPoint GetServerEndPoint()
+    {
+        return serverEndPoint;
+    }
+
+    public DeviceRol GetRole()
+    {
+        return rol;
+    }
+
+    public void SetRole(DeviceRol newRole)
+    {
+        rol = newRole;
+    }
+
+    public void SelectClientByIndex(int index)
+    {
+        var clients = clientManager.GetClients();
+        if (index >= 0 && index < clients.Count)
+        {
+            var client = clients[index];
+
+            if (selectedClient != null)
             {
-                Debug.Log($"UDP Receive Error: {ex.Message}");
-                break;
+                networkHandler.SendMessage(NetworkConstants.MsgDeselect, selectedClient);
+            }
+
+            selectedClient = client;
+            networkHandler.SendMessage(NetworkConstants.MsgSelect, selectedClient);
+            Debug.Log($"Selected client: {client}");
+        }
+    }
+
+    public List<string> GetClientIPList()
+    {
+        List<string> ipList = new();
+        foreach (var client in clientManager.GetClients())
+        {
+            ipList.Add(client.Address.ToString());
+        }
+        return ipList;
+    }
+
+    public string GetLocalIPAddress()
+    {
+        foreach (var host in Dns.GetHostEntry(Dns.GetHostName()).AddressList)
+        {
+            if (host.AddressFamily == AddressFamily.InterNetwork)
+            {
+                return host.ToString();
             }
         }
-    }
-
-    void ProcessMessage(string message, UdpReceiveResult result)
-    {
-        string[] parts = message.Split('|');
-
-        if (parts.Length >= 1 && parts[0] == "ClientConected")
-        {
-            if (rol != DeviceRol.Server) return;
-            AddClient(result.RemoteEndPoint);
-            return;
-        }
-
-        if (parts.Length >= 1 && parts[0] == "DiscoverClients")
-        {
-            if(rol != DeviceRol.Client) return;
-            serverEndPoint = result.RemoteEndPoint;
-            SendClientData();
-            return;
-        }
-
-        if (parts.Length >= 1 && parts[0] == "Select")
-        {
-            selected = true;
-            return;
-        }
-
-        if (parts.Length >= 1 && parts[0] == "Deselect")
-        {
-            selected = false;
-            return;
-        }
-    }
-
-    public void FindClients()
-    {
-        if (udpClient == null || rol != DeviceRol.Server) return;
-
-        if (selectedClient != null) SendMessageToEndpoint("Deselect", selectedClient);
-        selectedClient = null;
-
-        clients.Clear();
-        clientsFound.Invoke();
-        SendMessageToEndpoint("DiscoverClients", broadcastEndpoint);
-    }
-
-    private void AddClient(IPEndPoint clientEndPoint)
-    {
-        clients.Add(clientEndPoint);
-        Debug.Log("Client Conected: " + clientEndPoint.Address.ToString());
-        clientsFound.Invoke();
-    }
-
-    public void SelectClient(IPEndPoint client)
-    {
-        if (client == null) return;
-
-        Debug.Log("Selected Client: " + client.Address.ToString());
-
-        if (selectedClient != null) SendMessageToEndpoint("Deselect", selectedClient);
-        selectedClient = client;
-        SendMessageToEndpoint("Select", selectedClient);
-    }
-
-    public void SendMessageToEndpoint(string message, IPEndPoint endPoint)
-    {
-        byte[] data = Encoding.UTF8.GetBytes(message);
-
-        try
-        {
-            udpClient.Send(data, data.Length, endPoint);
-            Debug.Log($"Message sent: {message} to {endPoint.Address.ToString()}");
-        }
-        catch (SocketException ex)
-        {
-            Debug.Log("Message failed: " + ex.Message);
-        }
-    }
-
-    void SendClientData()
-    {
-        SendMessageToEndpoint("ClientConected", serverEndPoint);
-    }
-
-    private void OnDestroy()
-    {
-        messageReceived.RemoveAllListeners();
-        clientsFound.RemoveAllListeners();
+        return "127.0.0.1";
     }
 }
