@@ -12,8 +12,7 @@ public class ConnectionManager : MonoBehaviour
     public static ConnectionManager Instance;
     
     [SerializeField] private bool useAutoDiscovery = false;
-
-    private DeviceRol rol;
+    [SerializeField] private DeviceRol rol;
 
     private NetworkHandler networkHandler;
     private ClientManager clientManager;
