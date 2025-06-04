@@ -10,8 +10,10 @@ using UnityEngine.UI;
 public class ConnectionManager : MonoBehaviour
 {
     public static ConnectionManager Instance;
+    
+    [SerializeField] private bool useAutoDiscovery = false;
 
-    [SerializeField] private DeviceRol rol;
+    private DeviceRol rol;
 
     private NetworkHandler networkHandler;
     private ClientManager clientManager;
@@ -62,9 +64,10 @@ public class ConnectionManager : MonoBehaviour
                 Debug.LogWarning("No se pudo registrar el servidor como cliente: IP no válida");
             }
 
-#if UNITY_ANDROID
-            StartCoroutine(AutoBroadcastPing());
-#endif
+            if (useAutoDiscovery)
+            {
+                StartCoroutine(AutoBroadcastPing());
+            }
         }
     }
 
@@ -75,7 +78,7 @@ public class ConnectionManager : MonoBehaviour
         while (true)
         {
             networkHandler.SendMessage(NetworkConstants.MsgPing, broadcastEndpoint);
-            Debug.Log("[Server][Android] Sent Ping broadcast");
+            Debug.Log("[Server][AutoDiscovery] Sent Ping broadcast");
             yield return new WaitForSeconds(2f);
         }
     }
@@ -92,13 +95,11 @@ public class ConnectionManager : MonoBehaviour
             }
         }
 
-#if UNITY_ANDROID
-        if (message == NetworkConstants.MsgPing && rol == DeviceRol.Client)
+        if (useAutoDiscovery && message == NetworkConstants.MsgPing && rol == DeviceRol.Client)
         {
             SendMessageToServer(NetworkConstants.MsgClientHello);
-            Debug.Log("[Client][Android] Received Ping, sent ClientHello");
+            Debug.Log("[Client][AutoDiscovery] Received Ping, sent ClientHello");
         }
-#endif
 
         if (message == NetworkConstants.MsgSelect && rol == DeviceRol.Client)
         {
