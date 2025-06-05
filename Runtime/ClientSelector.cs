@@ -27,8 +27,11 @@ public class ClientSelector : MonoBehaviour
         if (clientIPs.Count == 1)
         {
             ConnectionManager.Instance.SelectClientByIndex(0);
+            clientsDropdown.SetValueWithoutNotify(0);
+            OnDropdownValueChanged(0); 
         }
     }
+
 
     private void OnDropdownValueChanged(int index)
     {
