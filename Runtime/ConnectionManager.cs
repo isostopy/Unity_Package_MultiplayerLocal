@@ -63,10 +63,6 @@ public class ConnectionManager : MonoBehaviour
                 Debug.LogWarning("No se pudo registrar el servidor como cliente: IP no válida");
             }
 
-            if (useAutoDiscovery)
-            {
-                StartCoroutine(AutoBroadcastPing());
-            }
         }
     }
 
@@ -176,7 +172,13 @@ public class ConnectionManager : MonoBehaviour
     public void SetRole(DeviceRol newRole)
     {
         rol = newRole;
+
+        if (rol == DeviceRol.Server && useAutoDiscovery)
+        {
+            StartCoroutine(AutoBroadcastPing());
+        }
     }
+
 
     public void SelectClientByIndex(int index)
     {
