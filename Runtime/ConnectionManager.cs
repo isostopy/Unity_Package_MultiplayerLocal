@@ -10,7 +10,7 @@ using UnityEngine.UI;
 public class ConnectionManager : MonoBehaviour
 {
     public static ConnectionManager Instance;
-    
+
     [SerializeField] private bool useAutoDiscovery = false;
     [SerializeField] private DeviceRol rol;
 
@@ -68,12 +68,13 @@ public class ConnectionManager : MonoBehaviour
 
     private IEnumerator AutoBroadcastPing()
     {
-        var broadcastEndpoint = new IPEndPoint(IPAddress.Broadcast, NetworkConstants.ServerPort);
+        var broadcastAddress = GetBroadcastAddress();
+        var broadcastEndpoint = new IPEndPoint(IPAddress.Parse(broadcastAddress), NetworkConstants.ServerPort);
 
         while (true)
         {
             networkHandler.SendMessage(NetworkConstants.MsgPing, broadcastEndpoint);
-            Debug.Log("[Server][AutoDiscovery] Sent Ping broadcast");
+            Debug.Log($"[Server][AutoDiscovery] Sent Ping broadcast to {broadcastEndpoint}");
             yield return new WaitForSeconds(2f);
         }
     }
@@ -92,6 +93,7 @@ public class ConnectionManager : MonoBehaviour
 
         if (useAutoDiscovery && message == NetworkConstants.MsgPing && rol == DeviceRol.Client)
         {
+            SetServerEndpoint(result.RemoteEndPoint.Address.ToString());
             SendMessageToServer(NetworkConstants.MsgClientHello);
             Debug.Log("[Client][AutoDiscovery] Received Ping, sent ClientHello");
         }
@@ -179,7 +181,6 @@ public class ConnectionManager : MonoBehaviour
         }
     }
 
-
     public void SelectClientByIndex(int index)
     {
         var clients = clientManager.GetClients();
@@ -218,5 +219,15 @@ public class ConnectionManager : MonoBehaviour
             }
         }
         return "127.0.0.1";
+    }
+
+    public string GetBroadcastAddress()
+    {
+        string localIP = GetLocalIPAddress();
+        var parts = localIP.Split('.');
+        if (parts.Length != 4)
+            return "255.255.255.255";
+
+        return $"{parts[0]}.{parts[1]}.{parts[2]}.255";
     }
 }
