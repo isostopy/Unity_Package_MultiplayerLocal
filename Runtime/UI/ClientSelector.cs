@@ -28,7 +28,7 @@ public class ClientSelector : MonoBehaviour
 
     private void OnDropdownValueChanged(int index)
     {
-        ConnectionManager.Instance.SelectClientByIndex(index);
+        //ConnectionManager.Instance.SelectClientBy(index);
         Debug.Log($"Client at index {index} selected.");
     }
 

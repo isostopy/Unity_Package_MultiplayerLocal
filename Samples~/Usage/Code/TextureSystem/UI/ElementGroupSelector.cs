@@ -16,10 +16,10 @@ public class ElementGroupSelector : MonoBehaviour
 
     private void OnGroupChanged(int index)
     {
-        if (elementGroupsManager?.textureManager?.textureSelector != null)
-        {
-            elementGroupsManager.textureManager.textureSelector.UpdateDropdownsOptions();
-        }
+       // if (elementGroupsManager?.textureManager?.textureSelector != null)
+        //{
+         //   elementGroupsManager.textureManager.textureSelector.UpdateDropdownsOptions();
+        //}
     }
 
     public void UpdateDropdownsOptions()

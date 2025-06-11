@@ -181,13 +181,11 @@ public class ConnectionManager : MonoBehaviour
         }
     }
 
-    public void SelectClientByIndex(int index)
+    public void SelectClientByIP(string ip)
     {
-        var clients = clientManager.GetClients();
-        if (index >= 0 && index < clients.Count)
+        var client = clientManager.GetClients().FirstOrDefault(c => c.Address.ToString() == ip);
+        if (client != null)
         {
-            var client = clients[index];
-
             if (selectedClient != null)
             {
                 networkHandler.SendMessage(NetworkConstants.MsgDeselect, selectedClient);
@@ -195,7 +193,11 @@ public class ConnectionManager : MonoBehaviour
 
             selectedClient = client;
             networkHandler.SendMessage(NetworkConstants.MsgSelect, selectedClient);
-            Debug.Log($"Selected client: {client}");
+            Debug.Log($"Selected client by IP: {client}");
+        }
+        else
+        {
+            Debug.LogWarning($"Client with IP {ip} not found.");
         }
     }
 

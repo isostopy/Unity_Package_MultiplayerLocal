@@ -1,24 +1,25 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Net.Sockets;
 using UnityEngine;
+using UnityEngine.Events;
 
 public class TextureManager : MonoBehaviour
 {
     private string textureFolder;
+    private string selectedGroup;
+    private string selectedTexture;
 
-    [HideInInspector] public List<string> textureFiles = new List<string>();
-    [HideInInspector] public ElementGroupsManager elementGroupsManager;
+    [HideInInspector] public List<string> textureFiles = new();
 
-    [HideInInspector] public TextureDownloader textureDownloader;
-    [HideInInspector] public TextureSelector textureSelector;
-    [SerializeField] ElementGroupSelector groupSelector;
+    [Header("Gestores externos")]
+    public ElementGroupsManager elementGroupsManager;
+    public TextureDownloader textureDownloader;
+
+    public UnityEvent<string, string> OnTextureSelected = new(); 
 
     private void Start()
     {
-        if (textureSelector != null) textureSelector.textureManager = this;
-
         textureDownloader.texturesUpdated.AddListener(LoadTextures);
 
         textureFolder = Path.Combine(Application.persistentDataPath, "Textures");
@@ -27,16 +28,25 @@ public class TextureManager : MonoBehaviour
         ConnectionManager.Instance.SubscribeToMessages(ProcessMessage);
     }
 
-    public void ApplySelection()
+    public void SetSelectedTexture(string groupID, string textureName)
     {
-        textureSelector.selectedTexture = Path.GetFileName(textureSelector.texturesDropdown.options[textureSelector.texturesDropdown.value].text);
-        groupSelector.selectedGroup = elementGroupsManager.selectableGroups[groupSelector.groupsDropdown.value].groupID;
-        OnScreenLog.TryLog("Texture " + textureSelector.selectedTexture + " selected for group: " + groupSelector.selectedGroup);
+        selectedGroup = groupID;
+        selectedTexture = textureName;
 
-        ConnectionManager.Instance.SendMessageToAllClients(NetworkConstants.MsgChangeMaterials + "|" + groupSelector.selectedGroup + "|" + textureSelector.selectedTexture);
+        OnScreenLog.TryLog("Selected texture: " + textureName + " for group: " + groupID);
+        OnTextureSelected.Invoke(groupID, textureName);
+
+        ConnectionManager.Instance.SendMessageToAllClients(
+            $"{NetworkConstants.MsgChangeMaterials}|{groupID}|{textureName}"
+        );
     }
 
-    void ProcessMessage(string message, UdpReceiveResult result)
+    public (string groupID, string textureName) GetSelected()
+    {
+        return (selectedGroup, selectedTexture);
+    }
+
+    void ProcessMessage(string message, System.Net.Sockets.UdpReceiveResult result)
     {
         string[] parts = message.Split('|');
 
@@ -66,8 +76,6 @@ public class TextureManager : MonoBehaviour
         textureFiles.Clear();
         textureFiles.AddRange(Directory.GetFiles(textureFolder, "*.png"));
         textureFiles.AddRange(Directory.GetFiles(textureFolder, "*.jpg"));
-
-        textureSelector?.UpdateDropdownsOptions();
     }
 
     public List<string> GetTexturesForGroup(string groupID)
@@ -88,21 +96,20 @@ public class TextureManager : MonoBehaviour
         if (elementGroupsManager.selectableGroups.Length == 0) return;
 
         GameObject[] retrievedGroup = elementGroupsManager.groups[groupID];
-
         foreach (GameObject element in retrievedGroup)
         {
-            Renderer elementRenderer = element.GetComponent<Renderer>();
+            Renderer renderer = element.GetComponent<Renderer>();
             string path = Path.Combine(textureFolder, groupID, textureName);
-            StartCoroutine(SetTexture(path, elementRenderer));
+            StartCoroutine(SetTexture(path, renderer));
         }
     }
 
-    IEnumerator SetTexture(string path, Renderer targetRenderer)
+    IEnumerator SetTexture(string path, Renderer renderer)
     {
         byte[] textureBytes = File.ReadAllBytes(path);
         Texture2D texture = new Texture2D(2, 2);
         texture.LoadImage(textureBytes);
-        targetRenderer.material.mainTexture = texture;
+        renderer.material.mainTexture = texture;
         yield return null;
     }
 
@@ -110,5 +117,4 @@ public class TextureManager : MonoBehaviour
     {
         ConnectionManager.Instance?.UnsubscribeFromMessages(ProcessMessage);
     }
-
 }
