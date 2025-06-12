@@ -14,8 +14,8 @@ public class ClientDisplayUI : MonoBehaviour
     private List<Button> currentButtons = new();
 
     private Button selectedButton;
-    private Color defaultColor = Color.white;
-    private Color selectedColor = Color.grey;
+    [SerializeField] private Color defaultColor = Color.white;
+    [SerializeField] private Color selectedColor = Color.grey;
 
     private void Start()
     {

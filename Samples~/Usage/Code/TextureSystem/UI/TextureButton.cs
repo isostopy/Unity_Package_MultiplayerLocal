@@ -14,6 +14,9 @@ public class TextureButton : MonoBehaviour
     private string groupID;
     private string textureName;
 
+    [SerializeField] private GameObject selectionFrame;
+
+
     public void Setup(TextureManager manager, string groupID, string textureName, Sprite textureSprite)
     {
         this.textureManager = manager;
@@ -26,6 +29,9 @@ public class TextureButton : MonoBehaviour
         if (labelText != null)
             labelText.text = Path.GetFileNameWithoutExtension(textureName);
 
+        if (selectionFrame != null)
+            selectionFrame.SetActive(false);
+
         GetComponent<Button>().onClick.AddListener(OnClick);
     }
 
@@ -33,6 +39,13 @@ public class TextureButton : MonoBehaviour
     {
         textureManager?.SetSelectedTexture(groupID, textureName);
     }
+
+    public void SetSelected(bool isSelected)
+    {
+        if (selectionFrame != null)
+            selectionFrame.SetActive(isSelected);
+    }
+
 
     private void OnDestroy()
     {

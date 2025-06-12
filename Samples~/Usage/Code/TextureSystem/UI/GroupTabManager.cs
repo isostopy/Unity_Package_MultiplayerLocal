@@ -21,8 +21,8 @@ public class GroupTabManager : MonoBehaviour
     public event GroupChanged OnGroupChanged;
 
     private Button selectedButton;
-    private Color defaultColor = Color.white;
-    private Color selectedColor = Color.grey;
+    [SerializeField] private Color defaultColor = Color.white;
+    [SerializeField] private Color selectedColor = Color.grey;
 
     void Start()
     {

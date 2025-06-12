@@ -13,9 +13,9 @@ public class TexturePanelController : MonoBehaviour
 
     private readonly List<GameObject> activeButtons = new();
 
-    private Button selectedTextureButton;
-    private Color defaultColor = Color.white;
-    private Color selectedColor = Color.grey;
+    private TextureButton selectedTextureButton;
+
+
 
     void Start()
     {
@@ -38,24 +38,16 @@ public class TexturePanelController : MonoBehaviour
             string fileName = Path.GetFileName(path);
             btn.Setup(textureManager, groupID, fileName, LoadSprite(path));
 
-            Button buttonComponent = btn.GetComponent<Button>();
-
-            buttonComponent.onClick.AddListener(() =>
+            btn.GetComponent<Button>().onClick.AddListener(() =>
             {
-                
                 if (selectedTextureButton != null)
-                {
-                    var previousColors = selectedTextureButton.colors;
-                    previousColors.normalColor = defaultColor;
-                    selectedTextureButton.colors = previousColors;
-                }
+                    selectedTextureButton.SetSelected(false);
 
-                var selectedColors = buttonComponent.colors;
-                selectedColors.normalColor = selectedColor;
-                buttonComponent.colors = selectedColors;
-
-                selectedTextureButton = buttonComponent;
+                btn.SetSelected(true);
+                selectedTextureButton = btn;
             });
+
+            Button buttonComponent = btn.GetComponent<Button>();
 
             activeButtons.Add(btnObj);
         }
