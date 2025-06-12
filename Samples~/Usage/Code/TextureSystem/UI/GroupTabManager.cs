@@ -20,6 +20,10 @@ public class GroupTabManager : MonoBehaviour
     public delegate void GroupChanged(string newGroupID);
     public event GroupChanged OnGroupChanged;
 
+    private Button selectedButton;
+    private Color defaultColor = Color.white;
+    private Color selectedColor = Color.grey;
+
     void Start()
     {
         foreach (var tab in groupTabs)
@@ -28,10 +32,6 @@ public class GroupTabManager : MonoBehaviour
             tab.button.onClick.AddListener(() => ShowGroup(capturedID));
         }
 
-        if (groupTabs.Count > 0)
-        {
-            ShowGroup(groupTabs[0].groupID); // Grupo inicial por defecto
-        }
     }
 
     public void ShowGroup(string groupID)
@@ -42,11 +42,20 @@ public class GroupTabManager : MonoBehaviour
         {
             bool isActive = tab.groupID == groupID;
             tab.panel.SetActive(isActive);
+
+            // Cambia color del botón
+            ColorBlock colors = tab.button.colors;
+            colors.normalColor = isActive ? selectedColor : defaultColor;
+            tab.button.colors = colors;
+
+            if (isActive)
+                selectedButton = tab.button;
         }
 
-        OnGroupChanged?.Invoke(groupID); // Notifica a quien escuche
+        OnGroupChanged?.Invoke(groupID);
         Debug.Log($"[GroupTabManager] Grupo activo cambiado a: {groupID}");
     }
+
 
     private void OnDestroy()
     {

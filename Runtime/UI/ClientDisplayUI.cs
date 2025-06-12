@@ -13,6 +13,10 @@ public class ClientDisplayUI : MonoBehaviour
     private Dictionary<string, string> ipToUserName = new();
     private List<Button> currentButtons = new();
 
+    private Button selectedButton;
+    private Color defaultColor = Color.white;
+    private Color selectedColor = Color.grey;
+
     private void Start()
     {
         ConnectionManager.Instance.SubscribeToClientsUpdated(RefreshClientList);
@@ -58,7 +62,29 @@ public class ClientDisplayUI : MonoBehaviour
         Debug.Log($"Selected client IP: {ip}");
 
         ConnectionManager.Instance.SelectClientByIP(ip);
+
+        // Restaurar color del botón previamente seleccionado
+        if (selectedButton != null)
+        {
+            ColorBlock prevColors = selectedButton.colors;
+            prevColors.normalColor = defaultColor;
+            selectedButton.colors = prevColors;
+        }
+
+        // Buscar y actualizar el nuevo botón seleccionado
+        Button clickedButton = currentButtons.Find(b =>
+            b.GetComponentInChildren<TMP_Text>().text == ipToUserName[ip]);
+
+        if (clickedButton != null)
+        {
+            ColorBlock newColors = clickedButton.colors;
+            newColors.normalColor = selectedColor;
+            clickedButton.colors = newColors;
+
+            selectedButton = clickedButton;
+        }
     }
+
 
     private void OnDestroy()
     {
