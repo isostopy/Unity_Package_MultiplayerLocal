@@ -43,9 +43,10 @@ public class GroupTabManager : MonoBehaviour
             bool isActive = tab.groupID == groupID;
             tab.panel.SetActive(isActive);
 
-            // Cambia color del botón
             ColorBlock colors = tab.button.colors;
             colors.normalColor = isActive ? selectedColor : defaultColor;
+            colors.highlightedColor = isActive ? selectedColor : defaultColor;
+            colors.selectedColor = isActive ? selectedColor : defaultColor;
             tab.button.colors = colors;
 
             if (isActive)
@@ -55,6 +56,7 @@ public class GroupTabManager : MonoBehaviour
         OnGroupChanged?.Invoke(groupID);
         Debug.Log($"[GroupTabManager] Grupo activo cambiado a: {groupID}");
     }
+
 
 
     private void OnDestroy()

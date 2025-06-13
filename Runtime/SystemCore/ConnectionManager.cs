@@ -204,12 +204,18 @@ public class ConnectionManager : MonoBehaviour
     public List<string> GetClientIPList()
     {
         List<string> ipList = new();
+        string localIP = GetLocalIPAddress();
+
         foreach (var client in clientManager.GetClients())
         {
-            ipList.Add(client.Address.ToString());
+            if (client.Address.ToString() != localIP)
+            {
+                ipList.Add(client.Address.ToString());
+            }
         }
         return ipList;
     }
+
 
     public string GetLocalIPAddress()
     {
