@@ -4,6 +4,7 @@ public static class NetworkConstants
 
     public const string MsgPing = "Ping";
     public const string MsgClientHello = "ClientHello";
+    public const string MsgDisconnect = "Disconnect";
     public const string MsgSelect = "Select";
     public const string MsgDeselect = "Deselect";
     public const string MsgLoadScene = "LoadScene";

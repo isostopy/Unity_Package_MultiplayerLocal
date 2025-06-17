@@ -16,6 +16,16 @@ public class ClientManager
         }
     }
 
+    public void RemoveClient(IPEndPoint client)
+    {
+        if (clients.Contains(client))
+        {
+            clients.Remove(client);
+            OnClientsUpdated.Invoke();
+        }
+    }
+
+
     public void ClearClients()
     {
         clients.Clear();

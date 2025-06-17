@@ -98,6 +98,12 @@ public class ConnectionManager : MonoBehaviour
             Debug.Log("[Client][AutoDiscovery] Received Ping, sent ClientHello");
         }
 
+        if (rol == DeviceRol.Server && message == NetworkConstants.MsgDisconnect)
+        {
+            clientManager.RemoveClient(result.RemoteEndPoint);
+            Debug.Log($"Client disconnected: {result.RemoteEndPoint}");
+        }
+
         if (message == NetworkConstants.MsgSelect && rol == DeviceRol.Client)
         {
             isSelected = true;
@@ -238,4 +244,14 @@ public class ConnectionManager : MonoBehaviour
 
         return $"{parts[0]}.{parts[1]}.{parts[2]}.255";
     }
+
+    private void OnApplicationQuit()
+    {
+        if (rol == DeviceRol.Client && serverEndPoint != null)
+        {
+            networkHandler.SendMessage(NetworkConstants.MsgDisconnect, serverEndPoint);
+            Debug.Log("[ConnectionManager] Sent Disconnect before quitting.");
+        }
+    }
+
 }

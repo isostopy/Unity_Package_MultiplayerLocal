@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -9,13 +8,13 @@ public class ClientDisplayUI : MonoBehaviour
     [Header("UI References")]
     [SerializeField] private GameObject buttonPrefab;
     [SerializeField] private Transform contentContainer;
+    [SerializeField] private Color defaultColor = Color.white;
+    [SerializeField] private Color selectedColor = Color.green;
 
+    private Dictionary<string, Button> ipToButton = new();
     private Dictionary<string, string> ipToUserName = new();
     private List<Button> currentButtons = new();
-
-    private Button selectedButton;
-    [SerializeField] private Color defaultColor = Color.white;
-    [SerializeField] private Color selectedColor = Color.grey;
+    private string selectedIP;
 
     private void Start()
     {
@@ -27,10 +26,10 @@ public class ClientDisplayUI : MonoBehaviour
     {
         ClearButtons();
 
-        List<string> clientIPs = ConnectionManager.Instance.GetClientIPList();
+        var clientIPs = ConnectionManager.Instance.GetClientIPList();
         int counter = 1;
 
-        foreach (string ip in clientIPs)
+        foreach (var ip in clientIPs)
         {
             string userName = $"Usuario {counter++}";
             ipToUserName[ip] = userName;
@@ -40,11 +39,33 @@ public class ClientDisplayUI : MonoBehaviour
             buttonText.text = userName;
 
             Button button = buttonObj.GetComponent<Button>();
-            string capturedIP = ip;
-            button.onClick.AddListener(() => OnClientButtonClicked(capturedIP));
-
+            button.onClick.AddListener(() => ShowClient(ip));
             currentButtons.Add(button);
+            ipToButton[ip] = button;
         }
+
+        if (!string.IsNullOrEmpty(selectedIP) && ipToButton.ContainsKey(selectedIP))
+            ShowClient(selectedIP);
+    }
+
+    public void ShowClient(string ip)
+    {
+        selectedIP = ip;
+
+        foreach (var kvp in ipToButton)
+        {
+            bool isSelected = kvp.Key == ip;
+            Button button = kvp.Value;
+
+            ColorBlock colors = button.colors;
+            colors.normalColor = isSelected ? selectedColor : defaultColor;
+            colors.highlightedColor = isSelected ? selectedColor : defaultColor;
+            colors.selectedColor = isSelected ? selectedColor : defaultColor;
+            button.colors = colors;
+        }
+
+        ConnectionManager.Instance.SelectClientByIP(ip);
+        Debug.Log($"[ClientDisplayUI] Cliente seleccionado: {ip}");
     }
 
     private void ClearButtons()
@@ -53,42 +74,14 @@ public class ClientDisplayUI : MonoBehaviour
         {
             Destroy(btn.gameObject);
         }
+
         currentButtons.Clear();
+        ipToButton.Clear();
+        ipToUserName.Clear();
     }
-
-
-    private void OnClientButtonClicked(string ip)
-    {
-        Debug.Log($"Selected client IP: {ip}");
-
-        ConnectionManager.Instance.SelectClientByIP(ip);
-
-        // Restaurar color del botón previamente seleccionado
-        if (selectedButton != null)
-        {
-            ColorBlock prevColors = selectedButton.colors;
-            prevColors.normalColor = defaultColor;
-            selectedButton.colors = prevColors;
-        }
-
-        // Buscar y actualizar el nuevo botón seleccionado
-        Button clickedButton = currentButtons.Find(b =>
-            b.GetComponentInChildren<TMP_Text>().text == ipToUserName[ip]);
-
-        if (clickedButton != null)
-        {
-            ColorBlock newColors = clickedButton.colors;
-            newColors.normalColor = selectedColor;
-            clickedButton.colors = newColors;
-
-            selectedButton = clickedButton;
-        }
-    }
-
 
     private void OnDestroy()
     {
-        
+        // limpieza de listeners si lo deseas
     }
-
 }

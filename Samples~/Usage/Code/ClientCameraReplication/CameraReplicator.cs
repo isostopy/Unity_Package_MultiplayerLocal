@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Net.Sockets;
 using System.Text;
 using UnityEngine;
@@ -12,15 +13,15 @@ public class CameraReplicator : MonoBehaviour
 
     private float timer;
 
-    private void Start()
+    private IEnumerator Start()
     {
         cameraTargetPosition = targetCamera != null ? targetCamera.transform.position : Vector3.zero;
         cameraTargetRotation = targetCamera != null ? targetCamera.transform.rotation : Quaternion.identity;
 
-        if (ConnectionManager.Instance != null)
-        {
-            ConnectionManager.Instance.SubscribeToMessages(OnMessageReceived);
-        }
+        // Espera hasta que ConnectionManager esté disponible
+        yield return new WaitUntil(() => ConnectionManager.Instance != null);
+
+        ConnectionManager.Instance.SubscribeToMessages(OnMessageReceived);
     }
 
     private void Update()
@@ -105,4 +106,13 @@ public class CameraReplicator : MonoBehaviour
                float.TryParse(values[2], out result.z) &&
                float.TryParse(values[3], out result.w);
     }
+
+    private void OnDestroy()
+    {
+        if (ConnectionManager.Instance != null)
+        {
+            ConnectionManager.Instance.UnsubscribeFromMessages(OnMessageReceived);
+        }
+    }
+
 }
