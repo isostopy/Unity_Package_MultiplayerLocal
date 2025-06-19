@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -50,7 +51,7 @@ public class GroupTabManager : MonoBehaviour
             colors.highlightedColor = isActive ? selectedColor : defaultColor;
             colors.selectedColor = isActive ? selectedColor : defaultColor;
             tab.button.colors = colors;
-            tab.labelText = isActive ? selectedTextColor : defaulTexttColor;
+            tab.labelText.color = isActive ? selectedTextColor : defaultTextColor;
 
             if (isActive)
                 selectedButton = tab.button;
