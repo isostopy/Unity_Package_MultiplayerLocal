@@ -10,6 +10,7 @@ public class GroupTabManager : MonoBehaviour
         public string groupID;
         public Button button;
         public GameObject panel;
+        public TMP_Text labelText;
     }
 
     [Header("Configuración de tabs")]
@@ -22,7 +23,9 @@ public class GroupTabManager : MonoBehaviour
 
     private Button selectedButton;
     [SerializeField] private Color defaultColor = Color.white;
-    [SerializeField] private Color selectedColor = Color.grey;
+    [SerializeField] private Color selectedColor = Color.black;
+    [SerializeField] private Color defaultTextColor = Color.black;
+    [SerializeField] private Color selectedTextColor = Color.white;
 
     void Start()
     {
@@ -41,13 +44,13 @@ public class GroupTabManager : MonoBehaviour
         foreach (var tab in groupTabs)
         {
             bool isActive = tab.groupID == groupID;
-            tab.panel.SetActive(isActive);
 
             ColorBlock colors = tab.button.colors;
             colors.normalColor = isActive ? selectedColor : defaultColor;
             colors.highlightedColor = isActive ? selectedColor : defaultColor;
             colors.selectedColor = isActive ? selectedColor : defaultColor;
             tab.button.colors = colors;
+            tab.labelText = isActive ? selectedTextColor : defaulTexttColor;
 
             if (isActive)
                 selectedButton = tab.button;
