@@ -1,3 +1,8 @@
+using System.Collections.Generic;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
 public class ClientDisplayUI : MonoBehaviour
 {
     [Header("UI References")]
@@ -77,6 +82,5 @@ public class ClientDisplayUI : MonoBehaviour
     private void OnDestroy()
     {
         clienteActivoButton.onClick.RemoveAllListeners();
-        ConnectionManager.Instance?.UnsubscribeFromMessages(ActualizarListaClientes);
     }
 }
