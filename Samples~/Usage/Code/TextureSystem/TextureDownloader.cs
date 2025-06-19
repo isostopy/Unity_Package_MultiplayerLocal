@@ -35,7 +35,6 @@ public class TextureDownloader : MonoBehaviour
         }
     }
 
-
     private void ProcessMessage(string message, UdpReceiveResult result)
     {
         string[] parts = message.Split('|');
@@ -84,6 +83,8 @@ public class TextureDownloader : MonoBehaviour
             }
         }
 
+        CleanObsoleteTextures();
+
         if (NeedsUpdate())
         {
             OnScreenLog.TryLog("New textures found. Starting download...");
@@ -93,6 +94,30 @@ public class TextureDownloader : MonoBehaviour
         {
             OnScreenLog.TryLog("All textures are up to date.");
             texturesUpdated.Invoke();
+        }
+    }
+
+    private void CleanObsoleteTextures()
+    {
+        HashSet<string> serverTexturePaths = new();
+        foreach (var texture in serverTextures)
+        {
+            string fullPath = Path.Combine(localPath, texture.groupID, texture.name);
+            serverTexturePaths.Add(fullPath);
+        }
+
+        if (!Directory.Exists(localPath)) return;
+
+        foreach (var groupDir in Directory.GetDirectories(localPath))
+        {
+            foreach (var file in Directory.GetFiles(groupDir, "*.*"))
+            {
+                if ((file.EndsWith(".png") || file.EndsWith(".jpg")) && !serverTexturePaths.Contains(file))
+                {
+                    File.Delete(file);
+                    OnScreenLog.TryLog($"Deleted obsolete texture: {file}");
+                }
+            }
         }
     }
 
@@ -219,7 +244,6 @@ public class TextureDownloader : MonoBehaviour
     {
         ConnectionManager.Instance?.UnsubscribeFromMessages(ProcessMessage);
     }
-
 
     [System.Serializable]
     public class TextureData
