@@ -1,73 +1,63 @@
 using System.Collections.Generic;
-using TMPro;
+using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class GroupTabManager : MonoBehaviour
+public class TexturePanelController : MonoBehaviour
 {
-    [System.Serializable]
-    public class GroupTab
-    {
-        public string groupID;
-        public Button button;
-        public GameObject panel;
-        public TMP_Text labelText;
-    }
+    [Header("Referencias")]
+    [SerializeField] private GroupTabManager groupTabManager;
+    [SerializeField] private TextureManager textureManager;
+    [SerializeField] private GameObject textureButtonPrefab;
+    [SerializeField] private Transform contentContainer;
 
-    [Header("Configuración de tabs")]
-    public List<GroupTab> groupTabs;
-
-    public string CurrentGroupID { get; private set; }
-
-    public delegate void GroupChanged(string newGroupID);
-    public event GroupChanged OnGroupChanged;
-
-    private Button selectedButton;
-    [SerializeField] private Color defaultColor = Color.white;
-    [SerializeField] private Color selectedColor = Color.black;
-    [SerializeField] private Color defaultTextColor = Color.black;
-    [SerializeField] private Color selectedTextColor = Color.white;
+    private readonly List<GameObject> activeButtons = new();
 
     void Start()
     {
-        foreach (var tab in groupTabs)
-        {
-            string capturedID = tab.groupID;
-            tab.button.onClick.AddListener(() => ShowGroup(capturedID));
-        }
+        groupTabManager.OnGroupChanged += LoadTexturesForGroup;
 
+        LoadTexturesForGroup(groupTabManager.CurrentGroupID);
     }
 
-    public void ShowGroup(string groupID)
+    private void LoadTexturesForGroup(string groupID)
     {
-        CurrentGroupID = groupID;
+        ClearButtons();
 
-        foreach (var tab in groupTabs)
+        List<string> texturePaths = textureManager.GetTexturesForGroup(groupID);
+
+        foreach (string path in texturePaths)
         {
-            bool isActive = tab.groupID == groupID;
+            GameObject btnObj = Instantiate(textureButtonPrefab, contentContainer);
+            TextureButton btn = btnObj.GetComponent<TextureButton>();
 
-            ColorBlock colors = tab.button.colors;
-            colors.normalColor = isActive ? selectedColor : defaultColor;
-            colors.highlightedColor = isActive ? selectedColor : defaultColor;
-            colors.selectedColor = isActive ? selectedColor : defaultColor;
-            tab.button.colors = colors;
-            tab.labelText.color = isActive ? selectedTextColor : defaultTextColor;
+            string fileName = Path.GetFileName(path);
+            btn.Setup(textureManager, groupID, fileName, LoadSprite(path));
 
-            if (isActive)
-                selectedButton = tab.button;
+            activeButtons.Add(btnObj);
         }
-
-        OnGroupChanged?.Invoke(groupID);
-        Debug.Log($"[GroupTabManager] Grupo activo cambiado a: {groupID}");
     }
 
+    private void ClearButtons()
+    {
+        foreach (GameObject btn in activeButtons)
+        {
+            Destroy(btn);
+        }
+        activeButtons.Clear();
+    }
 
+    private Sprite LoadSprite(string path)
+    {
+        byte[] fileData = File.ReadAllBytes(path);
+        Texture2D tex = new Texture2D(2, 2);
+        tex.LoadImage(fileData);
+
+        return Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
+    }
 
     private void OnDestroy()
     {
-        foreach (var tab in groupTabs)
-        {
-            tab.button.onClick.RemoveAllListeners();
-        }
+        groupTabManager.OnGroupChanged -= LoadTexturesForGroup;
     }
 }
