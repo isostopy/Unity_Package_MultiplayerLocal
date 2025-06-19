@@ -1,87 +1,82 @@
-using System.Collections.Generic;
-using TMPro;
-using UnityEngine;
-using UnityEngine.UI;
-
 public class ClientDisplayUI : MonoBehaviour
 {
     [Header("UI References")]
-    [SerializeField] private GameObject buttonPrefab;
-    [SerializeField] private Transform contentContainer;
-    [SerializeField] private Color defaultColor = Color.white;
-    [SerializeField] private Color selectedColor = Color.green;
+    [SerializeField] private Button clienteActivoButton;
+    [SerializeField] private TMP_Text clienteActivoText;
+    [SerializeField] private GameObject clientesPanel;
+    [SerializeField] private GameObject clienteButtonPrefab;
+    [SerializeField] private Transform clientesContainer;
 
-    private Dictionary<string, Button> ipToButton = new();
     private Dictionary<string, string> ipToUserName = new();
-    private List<Button> currentButtons = new();
-    private string selectedIP;
+    private List<Button> clienteButtons = new();
+    private string clienteSeleccionado;
 
     private void Start()
     {
-        ConnectionManager.Instance.SubscribeToClientsUpdated(RefreshClientList);
-        RefreshClientList();
+        clienteActivoButton.onClick.AddListener(TogglePanelClientes);
+        ConnectionManager.Instance.SubscribeToClientsUpdated(ActualizarListaClientes);
+        ActualizarListaClientes();
     }
 
-    private void RefreshClientList()
+    private void TogglePanelClientes()
     {
-        ClearButtons();
+        clientesPanel.SetActive(!clientesPanel.activeSelf);
+    }
 
-        var clientIPs = ConnectionManager.Instance.GetClientIPList();
+    private void ActualizarListaClientes()
+    {
+        LimpiarClientes();
+
+        var listaIPs = ConnectionManager.Instance.GetClientIPList();
+        if (listaIPs.Count == 0) return;
+
         int counter = 1;
-
-        foreach (var ip in clientIPs)
+        foreach (var ip in listaIPs)
         {
-            string userName = $"Usuario {counter++}";
-            ipToUserName[ip] = userName;
+            string nombre = $"Usuario {counter++}";
+            ipToUserName[ip] = nombre;
 
-            GameObject buttonObj = Instantiate(buttonPrefab, contentContainer);
-            TMP_Text buttonText = buttonObj.GetComponentInChildren<TMP_Text>();
-            buttonText.text = userName;
+            GameObject botonObj = Instantiate(clienteButtonPrefab, clientesContainer);
+            TMP_Text texto = botonObj.GetComponentInChildren<TMP_Text>();
+            texto.text = nombre;
 
-            Button button = buttonObj.GetComponent<Button>();
-            button.onClick.AddListener(() => ShowClient(ip));
-            currentButtons.Add(button);
-            ipToButton[ip] = button;
+            Button boton = botonObj.GetComponent<Button>();
+            string ipCapturada = ip;
+            boton.onClick.AddListener(() => SeleccionarCliente(ipCapturada));
+
+            clienteButtons.Add(boton);
         }
 
-        if (!string.IsNullOrEmpty(selectedIP) && ipToButton.ContainsKey(selectedIP))
-            ShowClient(selectedIP);
-    }
-
-    public void ShowClient(string ip)
-    {
-        selectedIP = ip;
-
-        foreach (var kvp in ipToButton)
+        // Selecciona el primero por defecto si aún no hay selección
+        if (string.IsNullOrEmpty(clienteSeleccionado) && listaIPs.Count > 0)
         {
-            bool isSelected = kvp.Key == ip;
-            Button button = kvp.Value;
-
-            ColorBlock colors = button.colors;
-            colors.normalColor = isSelected ? selectedColor : defaultColor;
-            colors.highlightedColor = isSelected ? selectedColor : defaultColor;
-            colors.selectedColor = isSelected ? selectedColor : defaultColor;
-            button.colors = colors;
+            SeleccionarCliente(listaIPs[0]);
         }
-
-        ConnectionManager.Instance.SelectClientByIP(ip);
-        Debug.Log($"[ClientDisplayUI] Cliente seleccionado: {ip}");
     }
 
-    private void ClearButtons()
+    private void LimpiarClientes()
     {
-        foreach (Button btn in currentButtons)
+        foreach (var btn in clienteButtons)
         {
             Destroy(btn.gameObject);
         }
+        clienteButtons.Clear();
+    }
 
-        currentButtons.Clear();
-        ipToButton.Clear();
-        ipToUserName.Clear();
+    private void SeleccionarCliente(string ip)
+    {
+        clienteSeleccionado = ip;
+        string nombre = ipToUserName[ip];
+        clienteActivoText.text = nombre;
+
+        clientesPanel.SetActive(false); // Oculta el panel
+
+        ConnectionManager.Instance.SelectClientByIP(ip);
     }
 
     private void OnDestroy()
     {
-        // limpieza de listeners si lo deseas
+        clienteActivoButton.onClick.RemoveAllListeners();
+        ConnectionManager.Instance?.UnsubscribeFromMessages(ActualizarListaClientes);
     }
 }
