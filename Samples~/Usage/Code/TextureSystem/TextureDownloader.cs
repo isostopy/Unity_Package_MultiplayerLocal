@@ -29,7 +29,10 @@ public class TextureDownloader : MonoBehaviour
 
         ConnectionManager.Instance.SubscribeToMessages(ProcessMessage);
 
-        ConnectionManager.Instance.SendMessageToAllClients(NetworkConstants.MsgUpdateTextures);
+        if (ConnectionManager.Instance.GetRole() == DeviceRol.Server)
+        {
+            ConnectionManager.Instance.SendMessageToAllClients(NetworkConstants.MsgUpdateTextures);
+        }
     }
 
 
