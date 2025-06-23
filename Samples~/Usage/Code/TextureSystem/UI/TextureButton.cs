@@ -32,6 +32,8 @@ public class TextureButton : MonoBehaviour
         if (selectionFrame != null)
             selectionFrame.SetActive(false);
 
+        labelText.fontStyle = FontStyles.Normal;
+
         GetComponent<Button>().onClick.AddListener(OnClick);
     }
 
@@ -44,6 +46,15 @@ public class TextureButton : MonoBehaviour
     {
         if (selectionFrame != null)
             selectionFrame.SetActive(isSelected);
+
+        if (isSelected)
+        {
+            labelText.fontStyle = FontStyles.Bold;
+        }
+        else
+        {
+            labelText.fontStyle = FontStyles.Normal;
+        }
     }
 
 
