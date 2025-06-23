@@ -11,8 +11,8 @@ public class TextureButton : MonoBehaviour
     [SerializeField] private TMP_Text labelText; // Opcional
 
     private TextureManager textureManager;
-    private string groupID;
-    private string textureName;
+    public string groupID;
+    public string textureName;
 
     [SerializeField] private GameObject selectionFrame;
 

@@ -16,6 +16,7 @@ public class TexturePanelController : MonoBehaviour
     void Start()
     {
         groupTabManager.OnGroupChanged += LoadTexturesForGroup;
+        textureManager.OnTextureSelected.AddListener(OnTextureSelected);
 
         LoadTexturesForGroup(groupTabManager.CurrentGroupID);
     }
@@ -54,6 +55,20 @@ public class TexturePanelController : MonoBehaviour
         tex.LoadImage(fileData);
 
         return Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
+    }
+
+    private void OnTextureSelected(string selectedGroup, string selectedTexture)
+    {
+        foreach (GameObject btnObj in activeButtons)
+        {
+            TextureButton btn = btnObj.GetComponent<TextureButton>();
+
+            bool isSelected =
+                btn.groupID == selectedGroup &&
+                btn.textureName == selectedTexture;
+
+            btn.SetSelected(isSelected);
+        }
     }
 
     private void OnDestroy()
