@@ -16,7 +16,10 @@ public class TextureManager : MonoBehaviour
     public ElementGroupsManager elementGroupsManager;
     public TextureDownloader textureDownloader;
 
-    public UnityEvent<string, string> OnTextureSelected = new(); 
+    public UnityEvent<string, string> OnTextureSelected = new();
+
+    private Dictionary<string, List<TextureDownloader.TextureData>> texturesByGroup = new();
+
 
     private void Start()
     {
@@ -28,6 +31,19 @@ public class TextureManager : MonoBehaviour
         ConnectionManager.Instance.SubscribeToMessages(ProcessMessage);
     }
 
+    public void SetDownloadedTextures(List<TextureDownloader.TextureData> textures)
+    {
+        texturesByGroup.Clear();
+        foreach (var tex in textures)
+        {
+            if (!texturesByGroup.ContainsKey(tex.groupID))
+                texturesByGroup[tex.groupID] = new List<TextureDownloader.TextureData>();
+
+            texturesByGroup[tex.groupID].Add(tex);
+        }
+    }
+
+
     public void SetSelectedTexture(string groupID, string textureName)
     {
         selectedGroup = groupID;
@@ -36,9 +52,7 @@ public class TextureManager : MonoBehaviour
         OnScreenLog.TryLog("Selected texture: " + textureName + " for group: " + groupID);
         OnTextureSelected.Invoke(groupID, textureName);
 
-        ConnectionManager.Instance.SendMessageToAllClients(
-            $"{NetworkConstants.MsgChangeMaterials}|{groupID}|{textureName}"
-        );
+        ConnectionManager.Instance.SendMessageToAllClients( $"{NetworkConstants.MsgChangeMaterials}|{groupID}|{textureName}");
     }
 
     public (string groupID, string textureName) GetSelected()
@@ -78,18 +92,14 @@ public class TextureManager : MonoBehaviour
         textureFiles.AddRange(Directory.GetFiles(textureFolder, "*.jpg"));
     }
 
-    public List<string> GetTexturesForGroup(string groupID)
+    public List<TextureDownloader.TextureData> GetTexturesForGroup(string groupID)
     {
-        string groupPath = Path.Combine(textureFolder, groupID);
-        if (!Directory.Exists(groupPath))
-            return new List<string>();
+        if (texturesByGroup.ContainsKey(groupID))
+            return texturesByGroup[groupID];
 
-        List<string> textures = new();
-        textures.AddRange(Directory.GetFiles(groupPath, "*.png"));
-        textures.AddRange(Directory.GetFiles(groupPath, "*.jpg"));
-
-        return textures;
+        return new List<TextureDownloader.TextureData>();
     }
+
 
     public void ChangeTextureToGroup(string groupID, string textureName)
     {

@@ -8,7 +8,7 @@ public class TextureButton : MonoBehaviour
 {
     [Header("Referencias UI")]
     [SerializeField] private Image textureImage;
-    [SerializeField] private TMP_Text labelText; // Opcional
+    [SerializeField] private TMP_Text labelText;
 
     private TextureManager textureManager;
     public string groupID;
@@ -17,17 +17,17 @@ public class TextureButton : MonoBehaviour
     [SerializeField] private GameObject selectionFrame;
 
 
-    public void Setup(TextureManager manager, string groupID, string textureName, Sprite textureSprite)
+    public void Setup(TextureManager manager, string groupID, string textureFileName, Sprite textureSprite, string displayName)
     {
         this.textureManager = manager;
         this.groupID = groupID;
-        this.textureName = textureName;
 
         if (textureImage != null)
             textureImage.sprite = textureSprite;
 
         if (labelText != null)
-            labelText.text = Path.GetFileNameWithoutExtension(textureName);
+            labelText.text = displayName;
+
 
         if (selectionFrame != null)
             selectionFrame.SetActive(false);

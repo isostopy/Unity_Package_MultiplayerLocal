@@ -78,6 +78,7 @@ public class TextureDownloader : MonoBehaviour
                 foreach (var texture in textureList.images)
                 {
                     texture.groupID = group.groupID;
+                    texture.fileName = Path.GetFileName(new System.Uri(texture.url).LocalPath);
                     serverTextures.Add(texture);
                 }
             }
@@ -155,7 +156,7 @@ public class TextureDownloader : MonoBehaviour
         foreach (var texture in serverTextures)
         {
             string groupPath = Path.Combine(localPath, texture.groupID);
-            string localFile = Path.Combine(groupPath, texture.name);
+            string localFile = Path.Combine(groupPath, texture.fileName);
             if (!File.Exists(localFile))
             {
                 return true;
@@ -172,7 +173,7 @@ public class TextureDownloader : MonoBehaviour
             if (!Directory.Exists(groupPath))
                 Directory.CreateDirectory(groupPath);
 
-            string filePath = Path.Combine(groupPath, texture.name);
+            string filePath = Path.Combine(groupPath, texture.fileName);
 
             using (UnityWebRequest request = UnityWebRequestTexture.GetTexture(texture.url))
             {
@@ -193,6 +194,9 @@ public class TextureDownloader : MonoBehaviour
 
         texturesUpdated.Invoke();
         OnScreenLog.TryLog("Textures updated!");
+
+        textureManager.SetDownloadedTextures(serverTextures);
+
     }
 
     private IEnumerator RetryDownloadTexture(TextureData texture, float delay)
@@ -201,7 +205,7 @@ public class TextureDownloader : MonoBehaviour
         OnScreenLog.TryLog($"Retrying download for texture {texture.name}...");
 
         string groupPath = Path.Combine(localPath, texture.groupID);
-        string filePath = Path.Combine(groupPath, texture.name);
+        string filePath = Path.Combine(groupPath, texture.fileName);
 
         using (UnityWebRequest request = UnityWebRequestTexture.GetTexture(texture.url))
         {
@@ -250,6 +254,7 @@ public class TextureDownloader : MonoBehaviour
     {
         public string name;
         public string url;
+        [System.NonSerialized] public string fileName;
         [System.NonSerialized] public string groupID;
     }
 

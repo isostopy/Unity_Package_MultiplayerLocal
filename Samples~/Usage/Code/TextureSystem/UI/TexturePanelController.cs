@@ -25,18 +25,19 @@ public class TexturePanelController : MonoBehaviour
     {
         ClearButtons();
 
-        List<string> texturePaths = textureManager.GetTexturesForGroup(groupID);
+        List<TextureDownloader.TextureData> textures = textureManager.GetTexturesForGroup(groupID);
 
-        foreach (string path in texturePaths)
+        foreach (var tex in textures)
         {
             GameObject btnObj = Instantiate(textureButtonPrefab, contentContainer);
             TextureButton btn = btnObj.GetComponent<TextureButton>();
 
-            string fileName = Path.GetFileName(path);
-            btn.Setup(textureManager, groupID, fileName, LoadSprite(path));
+            string path = Path.Combine(Application.persistentDataPath, "Textures", groupID, tex.fileName);
+            btn.Setup(textureManager, groupID, tex.fileName, LoadSprite(path), tex.name); // ? pasas name
 
             activeButtons.Add(btnObj);
         }
+
     }
 
     private void ClearButtons()

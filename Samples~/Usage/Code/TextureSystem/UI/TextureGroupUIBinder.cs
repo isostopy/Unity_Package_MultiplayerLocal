@@ -14,6 +14,9 @@ public class TextureGroupUIBinder : MonoBehaviour
     public TextureManager textureManager;
     public List<GroupDropdown> groupDropdowns;
 
+    private Dictionary<string, Dictionary<string, string>> nameToFileMapByGroup = new();
+
+
     void Start()
     {
         if (textureManager?.textureDownloader != null)
@@ -38,10 +41,12 @@ public class TextureGroupUIBinder : MonoBehaviour
             {
                 if (dropdown.options.Count > 0)
                 {
-                    string textureName = dropdown.options[index].text;
-
-                    ConnectionManager.Instance.SendMessageToAllClients(NetworkConstants.MsgChangeMaterials + "|" + groupID + "|" + textureName);
-                    Debug.Log($"[{groupID}] → {textureName} aplicado");
+                    string displayName = dropdown.options[index].text;
+                    if (nameToFileMapByGroup.TryGetValue(groupID, out var map) && map.TryGetValue(displayName, out var fileName))
+                    {
+                        ConnectionManager.Instance.SendMessageToAllClients(NetworkConstants.MsgChangeMaterials + "|" + groupID + "|" + fileName);
+                        Debug.Log($"[{groupID}] → {displayName} ({fileName}) aplicado");
+                    }
                 }
             });
         }
@@ -50,16 +55,23 @@ public class TextureGroupUIBinder : MonoBehaviour
     void PopulateDropdown(string groupID, TMP_Dropdown dropdown)
     {
         dropdown.ClearOptions();
+        nameToFileMapByGroup[groupID] = new Dictionary<string, string>();
 
-        List<string> textures = textureManager.GetTexturesForGroup(groupID);
+        List<TextureDownloader.TextureData> textures = textureManager.GetTexturesForGroup(groupID);
         List<string> options = new();
-        foreach (var path in textures)
+
+        foreach (var tex in textures)
         {
-            options.Add(System.IO.Path.GetFileName(path));
+            string displayName = tex.name;
+            string internalName = tex.fileName;
+
+            options.Add(displayName);
+            nameToFileMapByGroup[groupID][displayName] = internalName;
         }
 
         dropdown.AddOptions(options);
     }
+
 
     private void OnDestroy()
     {
