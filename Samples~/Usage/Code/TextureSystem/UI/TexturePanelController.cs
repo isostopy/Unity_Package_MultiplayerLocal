@@ -16,13 +16,19 @@ public class TexturePanelController : MonoBehaviour
     void Start()
     {
         groupTabManager.OnGroupChanged += LoadTexturesForGroup;
+        textureManager.textureDownloader.texturesUpdated.AddListener(OnTexturesUpdated);
         textureManager.OnTextureSelected.AddListener(OnTextureSelected);
-
-        LoadTexturesForGroup(groupTabManager.CurrentGroupID);
     }
 
     private void LoadTexturesForGroup(string groupID)
     {
+
+        if (string.IsNullOrEmpty(groupID))
+        {
+            Debug.LogWarning("[TexturePanelController] GroupID is null or empty.");
+            return;
+        }
+
         ClearButtons();
 
         List<TextureDownloader.TextureData> textures = textureManager.GetTexturesForGroup(groupID);
@@ -38,6 +44,11 @@ public class TexturePanelController : MonoBehaviour
             activeButtons.Add(btnObj);
         }
 
+    }
+
+    private void OnTexturesUpdated()
+    {
+        LoadTexturesForGroup(groupTabManager.CurrentGroupID);
     }
 
     private void ClearButtons()

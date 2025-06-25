@@ -79,10 +79,20 @@ public class TextureDownloader : MonoBehaviour
                 {
                     texture.groupID = group.groupID;
                     texture.fileName = Path.GetFileName(new System.Uri(texture.url).LocalPath);
-                    serverTextures.Add(texture);
+
+                    if (!serverTextures.Exists(t =>
+                        t.groupID == texture.groupID &&
+                        t.fileName == texture.fileName))
+                    {
+                        serverTextures.Add(texture);
+                    }
                 }
+
+                Debug.Log($"[CheckForUpdates] Group {group.groupID} textures fetched: {textureList.images.Count}");
             }
         }
+
+        Debug.Log($"[CheckForUpdates] Total textures fetched: {serverTextures.Count}");
 
         CleanObsoleteTextures();
 
@@ -97,6 +107,7 @@ public class TextureDownloader : MonoBehaviour
             texturesUpdated.Invoke();
         }
     }
+
 
     private void CleanObsoleteTextures()
     {
@@ -132,24 +143,16 @@ public class TextureDownloader : MonoBehaviour
 
         if (request.result == UnityWebRequest.Result.Success)
         {
-            TextureList textureList = JsonUtility.FromJson<TextureList>(request.downloadHandler.text);
-            if (textureList?.images != null)
-            {
-                foreach (var texture in textureList.images)
-                {
-                    texture.groupID = group.groupID;
-                    serverTextures.Add(texture);
-                }
-
-                OnScreenLog.TryLog($"Recovered texture list for group {group.groupID}. Retrying full update...");
-                StartCoroutine(DownloadAllTextures());
-            }
+            OnScreenLog.TryLog($"Recovered texture list for group {group.groupID}. Retrying full update...");
+            StartCoroutine(CheckForUpdates());
         }
         else
         {
-            StartCoroutine(RetryGroupFetch(group, delay));
+            OnScreenLog.TryLog($"Retry failed for group {group.groupID}: {request.error}");
+            StartCoroutine(RetryGroupFetch(group, delay)); // Sigue intentando
         }
     }
+
 
     bool NeedsUpdate()
     {

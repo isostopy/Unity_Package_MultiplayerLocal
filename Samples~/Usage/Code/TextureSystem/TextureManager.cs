@@ -52,7 +52,7 @@ public class TextureManager : MonoBehaviour
         OnScreenLog.TryLog("Selected texture: " + textureName + " for group: " + groupID);
         OnTextureSelected.Invoke(groupID, textureName);
 
-        ConnectionManager.Instance.SendMessageToAllClients( $"{NetworkConstants.MsgChangeMaterials}|{groupID}|{textureName}");
+        ConnectionManager.Instance.SendMessageToAllClients($"{NetworkConstants.MsgChangeMaterials}|{groupID}|{textureName}");
     }
 
     public (string groupID, string textureName) GetSelected()
@@ -81,15 +81,17 @@ public class TextureManager : MonoBehaviour
 
     public void LoadTextures()
     {
-        if (!Directory.Exists(textureFolder))
-        {
-            OnScreenLog.TryLog("Texture folder not found!");
-            return;
-        }
-
         textureFiles.Clear();
-        textureFiles.AddRange(Directory.GetFiles(groupPath, "*.png"));
-        textureFiles.AddRange(Directory.GetFiles(groupPath, "*.jpg"));
+
+        foreach (var group in elementGroupsManager.selectableGroups)
+        {
+            string groupPath = Path.Combine(textureFolder, group.groupID);
+            if (Directory.Exists(groupPath))
+            {
+                textureFiles.AddRange(Directory.GetFiles(groupPath, "*.png"));
+                textureFiles.AddRange(Directory.GetFiles(groupPath, "*.jpg"));
+            }
+        }
     }
 
     public List<TextureDownloader.TextureData> GetTexturesForGroup(string groupID)
