@@ -128,10 +128,18 @@ public class NetworkHandler
         udpClient.Send(data, data.Length, endPoint);
     }
 
-    private void RestartListening()
+    public void RestartListening(bool clearListeners = false)
     {
         StopListening();
         InitializeSocket();
+
+        if (clearListeners)
+        {
+            OnMessageReceived = null;
+            Debug.Log("[NetworkHandler] Cleared all message listeners.");
+        }
+
         StartListening();
     }
+
 }

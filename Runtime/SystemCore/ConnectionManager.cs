@@ -245,6 +245,12 @@ public class ConnectionManager : MonoBehaviour
         return $"{parts[0]}.{parts[1]}.{parts[2]}.255";
     }
 
+    public void ResetMessageHandlers()
+    {
+        networkHandler.RestartListening(clearListeners: true);
+    }
+
+
     private void OnApplicationQuit()
     {
         if (rol == DeviceRol.Client && serverEndPoint != null)
