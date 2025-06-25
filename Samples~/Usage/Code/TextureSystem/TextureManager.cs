@@ -107,26 +107,36 @@ public class TextureManager : MonoBehaviour
     {
         if (elementGroupsManager.selectableGroups.Length == 0) return;
 
-        GameObject[] retrievedGroup = elementGroupsManager.groups[groupID];
-        foreach (GameObject element in retrievedGroup)
+        GroupElement[] retrievedGroup = elementGroupsManager.groups[groupID];
+
+        foreach (var item in retrievedGroup)
         {
-            Renderer renderer = element.GetComponent<Renderer>();
+            Renderer renderer = item.element.GetComponent<Renderer>();
+            if (renderer == null) continue;
+
             string path = Path.Combine(textureFolder, groupID, textureName);
-            StartCoroutine(SetTexture(path, renderer));
+            StartCoroutine(SetTexture(path, renderer, item.materialIndex));
         }
     }
 
-    IEnumerator SetTexture(string path, Renderer renderer)
+
+    IEnumerator SetTexture(string path, Renderer renderer, int materialIndex)
     {
+        if (materialIndex < 0 || materialIndex >= renderer.materials.Length)
+        {
+            Debug.LogWarning($"Material index {materialIndex} out of range for {renderer.gameObject.name}");
+            yield break;
+        }
+
         byte[] textureBytes = File.ReadAllBytes(path);
         Texture2D texture = new Texture2D(2, 2);
         texture.LoadImage(textureBytes);
-        renderer.material.mainTexture = texture;
+
+        Material[] materials = renderer.materials;
+        materials[materialIndex].mainTexture = texture;
+        renderer.materials = materials;
+
         yield return null;
     }
 
-    private void OnDestroy()
-    {
-        ConnectionManager.Instance?.UnsubscribeFromMessages(ProcessMessage);
-    }
 }

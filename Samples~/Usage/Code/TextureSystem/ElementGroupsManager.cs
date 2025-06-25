@@ -4,7 +4,8 @@ using UnityEngine;
 public class ElementGroupsManager : MonoBehaviour
 {
     public SelectableGroup[] selectableGroups;
-    public Dictionary<string, GameObject[]> groups = new();
+    public Dictionary<string, GroupElement[]> groups = new();
+
 
     [HideInInspector] public TextureManager textureManager;
     [HideInInspector] public ElementGroupSelector elementGroupSelector;
@@ -44,11 +45,21 @@ public class ElementGroupsManager : MonoBehaviour
     }
 }
 
+
 [System.Serializable]
 public class SelectableGroup
 {
     public string groupID;
     public string url;
     public bool hidable;
-    public GameObject[] elements;
+    public GroupElement[] elements;
+
+}
+
+[System.Serializable]
+public class GroupElement
+{
+    public GameObject element;
+    [Tooltip("Índice del material dentro del array de materiales.")]
+    public int materialIndex;
 }
