@@ -15,14 +15,9 @@ public class TextureDownloader : MonoBehaviour
 
     [HideInInspector] public UnityEvent texturesUpdated;
 
-    private void Awake()
-    {
-        ConnectionManager.Instance.ResetMessageHandlers();
-    }
 
     void Start()
     {
-
         localPath = Path.Combine(Application.persistentDataPath, "Textures");
         if (!Directory.Exists(localPath))
             Directory.CreateDirectory(localPath);

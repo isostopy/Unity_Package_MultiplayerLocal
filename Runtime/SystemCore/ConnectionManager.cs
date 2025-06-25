@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Sockets;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class ConnectionManager : MonoBehaviour
@@ -35,7 +36,19 @@ public class ConnectionManager : MonoBehaviour
         {
             Destroy(gameObject);
         }
+
+        SceneManager.sceneLoaded += OnSceneLoaded;
     }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        Debug.Log("[ConnectionManager] Scene loaded, resetting network handlers.");
+
+        ResetMessageHandlers();
+
+        SubscribeToMessages(HandleMessage);
+    }
+
 
     private void Initialize()
     {
@@ -248,6 +261,11 @@ public class ConnectionManager : MonoBehaviour
     public void ResetMessageHandlers()
     {
         networkHandler.RestartListening(clearListeners: true);
+    }
+
+    private void OnDestroy()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
     }
 
 
