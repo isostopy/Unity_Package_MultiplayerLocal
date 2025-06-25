@@ -167,7 +167,7 @@ public class TextureDownloader : MonoBehaviour
 
     IEnumerator DownloadAllTextures()
     {
-        foreach (var texture in serverTextures)
+        foreach (var texture in new List<TextureData>(serverTextures))
         {
             string groupPath = Path.Combine(localPath, texture.groupID);
             if (!Directory.Exists(groupPath))
@@ -188,7 +188,7 @@ public class TextureDownloader : MonoBehaviour
 
                 Texture2D tex = ((DownloadHandlerTexture)request.downloadHandler).texture;
                 File.WriteAllBytes(filePath, tex.EncodeToPNG());
-                OnScreenLog.TryLog($"Downloaded: {texture.name} to group: {texture.groupID}");
+                OnScreenLog.TryLog($"Downloaded and replaced: {texture.name} in group: {texture.groupID}");
             }
         }
 
@@ -196,8 +196,8 @@ public class TextureDownloader : MonoBehaviour
         OnScreenLog.TryLog("Textures updated!");
 
         textureManager.SetDownloadedTextures(serverTextures);
-
     }
+
 
     private IEnumerator RetryDownloadTexture(TextureData texture, float delay)
     {

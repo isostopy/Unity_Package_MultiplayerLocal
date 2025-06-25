@@ -88,8 +88,8 @@ public class TextureManager : MonoBehaviour
         }
 
         textureFiles.Clear();
-        textureFiles.AddRange(Directory.GetFiles(textureFolder, "*.png"));
-        textureFiles.AddRange(Directory.GetFiles(textureFolder, "*.jpg"));
+        textureFiles.AddRange(Directory.GetFiles(groupPath, "*.png"));
+        textureFiles.AddRange(Directory.GetFiles(groupPath, "*.jpg"));
     }
 
     public List<TextureDownloader.TextureData> GetTexturesForGroup(string groupID)

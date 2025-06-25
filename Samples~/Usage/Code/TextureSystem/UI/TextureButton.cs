@@ -21,6 +21,7 @@ public class TextureButton : MonoBehaviour
     {
         this.textureManager = manager;
         this.groupID = groupID;
+        this.textureName = textureFileName;
 
         if (textureImage != null)
             textureImage.sprite = textureSprite;
